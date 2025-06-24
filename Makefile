@@ -22,7 +22,7 @@ LIBDATACHANNEL_PATH ?= third_party/libdatachannel
 USE_HW_H264 ?= 1
 USE_FFMPEG ?= $(shell pkg-config libavutil libavformat libavcodec && echo 1)
 USE_LIBCAMERA ?= $(shell pkg-config libcamera && echo 1)
-USE_RTSP ?= $(shell pkg-config live555 && echo 1)
+USE_RTSP ?= $(shell pkg-config live555 && echo 0)
 USE_LIBDATACHANNEL ?= $(shell [ -e $(LIBDATACHANNEL_PATH)/CMakeLists.txt ] && echo 1)
 
 ifeq (1,$(DEBUG))
