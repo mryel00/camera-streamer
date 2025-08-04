@@ -9,12 +9,14 @@ docker_image="camera_streamer_build_env"
 
 build_type="raspi"
 [[ -n "$1" ]] && build_type="$1"
+shift
 
 debian_version="bookworm"
-[[ -n "$2" ]] && debian_version="$2" && docker_image="${docker_image}_${2}"
+[[ -n "$1" ]] && debian_version="$1" && docker_image="${docker_image}_${1}"
+shift
 
-arch=${3:-$(dpkg --print-architecture)}
-shift 3
+arch=${1:-$(dpkg --print-architecture)}
+shift
 
 case "$arch" in
   amd64)
