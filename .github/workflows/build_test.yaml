@@ -1,12 +1,12 @@
-on:
-  push:
-    paths-ignore:
-      - '.github/workflows/build_test.yaml'
-      - 'RELEASE.md'
-  pull_request:
-  workflow_dispatch:
-  schedule:
-    - cron: '0 15 * * 2'  # Runs at 15:00 (3pm) UTC every Tuesday
+# on:
+#   push:
+#     paths-ignore:
+#       - '.github/workflows/build_test.yaml'
+#       - 'RELEASE.md'
+#   pull_request:
+#   workflow_dispatch:
+#   schedule:
+#     - cron: '0 15 * * 2'  # Runs at 15:00 (3pm) UTC every Tuesday
 
 jobs:
   build:
@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        debian_version: [bullseye, bookworm, trixie]
+        debian_version: [bookworm, trixie]
         arch:
           - docker: amd64
             variant: amd64
