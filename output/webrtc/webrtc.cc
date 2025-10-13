@@ -64,6 +64,20 @@ struct ClientTrackData
   {
   }
 
+  void sendTime()
+  {
+    double currentTime_s = get_monotonic_time_us(NULL, NULL)/(1000.0*1000.0);
+
+    auto rtpConfig = sender->rtpConfig;
+    uint32_t elapsedTimestamp = rtpConfig->secondsToTimestamp(currentTime_s);
+
+    sender->rtpConfig->timestamp = sender->rtpConfig->startTimestamp + elapsedTimestamp;
+    auto reportElapsedTimestamp = sender->rtpConfig->timestamp - sender->lastReportedTimestamp();
+    if (sender->rtpConfig->timestampToSeconds(reportElapsedTimestamp) > 1) {
+      sender->setNeedsToReport();
+    }
+  }
+
   bool wantsFrame() const
   {
     if (!track)
@@ -158,6 +172,7 @@ public:
     }
 
     rtc::binary data((std::byte*)buf->start, (std::byte*)buf->start + buf->used);
+    video->sendTime();
     video->track->send(data);
   }
 
