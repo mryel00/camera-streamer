@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        debian_version: [bullseye, bookworm]
+        debian_version: [bullseye, bookworm, trixie]
         arch:
           - docker: amd64
             variant: amd64

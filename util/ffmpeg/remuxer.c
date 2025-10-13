@@ -7,7 +7,13 @@
 static AVRational time_base = {1, 1000LL * 1000LL};
 static unsigned avio_ctx_buffer_size = 4096;
 
-static int ffmpeg_remuxer_init_avcontext(AVFormatContext **context, ffmpeg_remuxer_t *remuxer, int output, int (*packet)(void *opaque, uint8_t *buf, int buf_size))
+#if LIBAVFORMAT_VERSION_MAJOR < 61
+typedef int (*ffmpeg_write_nonconst_packet)(void *opaque, uint8_t *buf, int buf_size);
+#else // LIBAVFORMAT_VERSION_MAJOR < 61
+#define ffmpeg_write_nonconst_packet ffmpeg_write_packet
+#endif // LIBAVFORMAT_VERSION_MAJOR < 61
+
+static int ffmpeg_remuxer_init_avcontext(AVFormatContext **context, ffmpeg_remuxer_t *remuxer, int output, ffmpeg_write_packet packet_out, ffmpeg_read_packet packet_in)
 {
   uint8_t *buffer = NULL;
   AVIOContext *avio = NULL;
@@ -20,7 +26,7 @@ static int ffmpeg_remuxer_init_avcontext(AVFormatContext **context, ffmpeg_remux
   buffer = av_malloc(buffer_size);
   if (!buffer)
     return AVERROR(ENOMEM);
-  avio = avio_alloc_context(buffer, buffer_size, output, remuxer->opaque, output ? NULL : packet, output ? packet : NULL, NULL);
+  avio = avio_alloc_context(buffer, buffer_size, output, remuxer->opaque, packet_in, (ffmpeg_write_nonconst_packet)packet_out, NULL);
   if (!avio)
     goto error;
   if (output && (ret = avformat_alloc_output_context2(context, NULL, remuxer->video_format, NULL)) < 0)
@@ -106,9 +112,9 @@ int ffmpeg_remuxer_open(ffmpeg_remuxer_t *remuxer)
   remuxer->packet = av_packet_alloc();
   if (!remuxer->packet)
     return AVERROR(ENOMEM);
-  if ((ret = ffmpeg_remuxer_init_avcontext(&remuxer->input_context, remuxer, 0, remuxer->read_packet)) < 0)
+  if ((ret = ffmpeg_remuxer_init_avcontext(&remuxer->input_context, remuxer, 0, NULL, remuxer->read_packet)) < 0)
     return ret;
-  if ((ret = ffmpeg_remuxer_init_avcontext(&remuxer->output_context, remuxer, 1, remuxer->write_packet)) < 0)
+  if ((ret = ffmpeg_remuxer_init_avcontext(&remuxer->output_context, remuxer, 1, remuxer->write_packet, NULL)) < 0)
     return ret;
   if ((ret = avformat_open_input(&remuxer->input_context, NULL, input_format, &remuxer->input_opts)) < 0)
     return ret;

@@ -14,6 +14,7 @@ CFLAGS += -Wno-error=cpp
 
 # LOG_*(this, ...)
 CFLAGS += -Wno-error=nonnull-compare
+CFLAGS += -Wno-nonnull-compare
 
 # libdatachannel deprecations on bookworm
 # error: 'HMAC_Init_ex' is deprecated: Since OpenSSL 3.0
@@ -24,6 +25,7 @@ CCACHE ?= ccache
 endif
 
 LIBDATACHANNEL_PATH ?= third_party/libdatachannel
+LIBDATACHANNEL_VERSION ?= $(LIBDATACHANNEL_PATH)/v0.23.222529eb2c8ae44
 
 USE_HW_H264 ?= 1
 USE_FFMPEG ?= $(shell pkg-config libavutil libavformat libavcodec && echo 1)
@@ -116,6 +118,10 @@ html/%.c: html/%
 	xxd -i $< > $@.tmp
 	mv $@.tmp $@
 
-$(LIBDATACHANNEL_PATH)/build/libdatachannel-static.a: $(LIBDATACHANNEL_PATH)
+$(LIBDATACHANNEL_VERSION):
+
+$(LIBDATACHANNEL_PATH)/build/libdatachannel-static.a: $(LIBDATACHANNEL_PATH) $(LIBDATACHANNEL_VERSION)
+	git submodule update --init --recursive $(LIBDATACHANNEL_PATH)
 	[ -e $</build/Makefile ] || cmake -S $< -B $</build
 	$(MAKE) -C $</build datachannel-static
+	touch $(LIBDATACHANNEL_VERSION) $@

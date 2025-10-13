@@ -33,7 +33,6 @@ extern "C" {
 #include <rtc/peerconnection.hpp>
 #include <rtc/rtcpsrreporter.hpp>
 #include <rtc/h264rtppacketizer.hpp>
-#include <rtc/h264packetizationhandler.hpp>
 #include <rtc/rtcpnackresponder.hpp>
 
 #include "third_party/magic_enum/include/magic_enum.hpp"
@@ -63,9 +62,6 @@ struct ClientTrackData
 
   void startStreaming()
   {
-    double currentTime_s = get_monotonic_time_us(NULL, NULL)/(1000.0*1000.0);
-    sender->rtpConfig->setStartTime(currentTime_s, rtc::RtpPacketizationConfig::EpochStart::T1970);
-    sender->startRecording();
   }
 
   void sendTime()
@@ -76,7 +72,7 @@ struct ClientTrackData
     uint32_t elapsedTimestamp = rtpConfig->secondsToTimestamp(currentTime_s);
 
     sender->rtpConfig->timestamp = sender->rtpConfig->startTimestamp + elapsedTimestamp;
-    auto reportElapsedTimestamp = sender->rtpConfig->timestamp - sender->previousReportedTimestamp;
+    auto reportElapsedTimestamp = sender->rtpConfig->timestamp - sender->lastReportedTimestamp();
     if (sender->rtpConfig->timestampToSeconds(reportElapsedTimestamp) > 1) {
       sender->setNeedsToReport();
     }
@@ -249,14 +245,13 @@ static std::shared_ptr<ClientTrackData> webrtc_add_video(const std::shared_ptr<r
   video.setBitrate(1000);
   video.addSSRC(ssrc, cname, msid, cname);
   auto track = pc->addTrack(video);
-  auto rtpConfig = std::make_shared<rtc::RtpPacketizationConfig>(ssrc, cname, payloadType, rtc::H264RtpPacketizer::defaultClockRate);
+  auto rtpConfig = std::make_shared<rtc::RtpPacketizationConfig>(ssrc, cname, payloadType, rtc::H264RtpPacketizer::ClockRate);
   auto packetizer = std::make_shared<rtc::H264RtpPacketizer>(rtc::H264RtpPacketizer::Separator::LongStartSequence, rtpConfig);
-  auto h264Handler = std::make_shared<rtc::H264PacketizationHandler>(packetizer);
   auto srReporter = std::make_shared<rtc::RtcpSrReporter>(rtpConfig);
-  h264Handler->addToChain(srReporter);
+  packetizer->addToChain(srReporter);
   auto nackResponder = std::make_shared<rtc::RtcpNackResponder>();
-  h264Handler->addToChain(nackResponder);
-  track->setMediaHandler(h264Handler);
+  packetizer->addToChain(nackResponder);
+  track->setMediaHandler(packetizer);
   return std::shared_ptr<ClientTrackData>(new ClientTrackData{track, srReporter});
 }
 
