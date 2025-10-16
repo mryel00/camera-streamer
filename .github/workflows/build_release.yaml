@@ -13,7 +13,7 @@ jobs:
           - docker: amd64
             runner: ubuntu-24.04
           - docker: arm/v7
-            runner: ubuntu-24.04
+            runner: ubuntu-24.04-arm
           - docker: arm64/v8
             runner: ubuntu-24.04-arm
         build_type: [generic, raspi]
@@ -23,10 +23,16 @@ jobs:
             build_type: raspi
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v5
       with:
         fetch-depth: 0
         submodules: recursive
+    - name: Pull changes
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git config pull.rebase true
+        git merge origin/main
     - name: Set GIT_VERSION
       shell: bash
       run: |
@@ -82,10 +88,16 @@ jobs:
     needs: [build]
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v5
       with:
         fetch-depth: 0
         submodules: recursive
+    - name: Pull changes
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git config pull.rebase true
+        git merge origin/main
     - name: Set GIT_VERSION
       shell: bash
       run: |
