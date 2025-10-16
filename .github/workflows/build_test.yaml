@@ -1,12 +1,12 @@
-on:
-  push:
-    paths-ignore:
-      - '.github/workflows/build_test.yaml'
-      - 'RELEASE.md'
-  pull_request:
-  workflow_dispatch:
-  schedule:
-    - cron: '0 15 * * 2'  # Runs at 15:00 (3pm) UTC every Tuesday
+# on:
+#   push:
+#     paths-ignore:
+#       - '.github/workflows/build_test.yaml'
+#       - 'RELEASE.md'
+#   pull_request:
+#   workflow_dispatch:
+#   schedule:
+#     - cron: '0 15 * * 2'  # Runs at 15:00 (3pm) UTC every Tuesday
 
 jobs:
   build:
@@ -22,7 +22,7 @@ jobs:
             runner: ubuntu-24.04
           - docker: arm/v7
             variant: arm32v7
-            runner: ubuntu-24.04
+            runner: ubuntu-24.04-arm
           - docker: arm64/v8
             variant: arm64v8
             runner: ubuntu-24.04-arm

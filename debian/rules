@@ -48,12 +48,11 @@ override_dh_shlibdeps:
 	dh_shlibdeps
 
 	# Make libcamera0 to be exact
-	sed -i "s/libcamera0 (>=[^)]*)/libcamera0 (= $$(dpkg -s libcamera0 | grep Version | cut -d" " -f2))/g" debian/camera-streamer*.substvars
+	sed -i "s/libcamera0 (>=[^)]*)/libcamera0 (= $$(dpkg -s libcamera0 | grep Version | cut -d" " -f2))/g" debian/mainsail-camera-streamer*.substvars
 
 .PHONY: override_dh_install
 override_dh_install:
 	dh_install
-	sed -i "s|/usr/local/bin/camera-streamer|/usr/bin/camera-streamer|g" debian/camera-streamer*/usr/share/camera-streamer/examples/*.service
 
 # dh_make generated override targets
 # This is example for Cmake (See https://bugs.debian.org/641051 )
