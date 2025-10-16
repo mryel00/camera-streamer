@@ -1,16 +1,12 @@
 on:
-  push:
-    branches:
-      - main
-      - develop
-      - 'stable-*'
-    paths-ignore:
-      - '.github/workflows/build_test.yaml'
-      - 'RELEASE.md'
-  pull_request:
+#   push:
+#     paths-ignore:
+#       - '.github/workflows/build_test.yaml'
+#       - 'RELEASE.md'
+#   pull_request:
   workflow_dispatch:
-  schedule:
-    - cron: '0 15 * * 2'  # Runs at 15:00 (3pm) UTC every Tuesday
+#   schedule:
+#     - cron: '0 15 * * 2'  # Runs at 15:00 (3pm) UTC every Tuesday
 
 jobs:
   build:
