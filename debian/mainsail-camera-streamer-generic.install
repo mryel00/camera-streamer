@@ -1,0 +1,2 @@
+camera-streamer usr/bin/
+tools/dump_cameras.sh /usr/share/camera-streamer/
