@@ -1,3 +1,0 @@
-camera-streamer usr/bin/
-service/camera-streamer-generic-usb-cam.service /usr/share/camera-streamer/examples/
-tools/dump_cameras.sh /usr/share/camera-streamer/
