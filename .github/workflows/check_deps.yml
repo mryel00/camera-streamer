@@ -1,0 +1,80 @@
+# Copied and adjusted from https://github.com/OctoPrint/camera-streamer/
+name: "Check libcamera dependency update"
+
+on:
+  schedule:
+    - cron: "42 * * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: "Check"
+    runs-on: ubuntu-latest
+    outputs:
+      same: ${{ steps.new_result.outputs.same }}
+    steps:
+    - name: "Cache last result"
+      uses: actions/cache@v4
+      with:
+        path: last*.txt
+        key: ${{ runner.os }}-check-deps-v2.0
+
+    - name: "Lookup libcamera version in bullseye"
+      id: libcamera_version_bullseye
+      uses: OctoPrint/actions/latest-apt-version@main
+      with:
+        package: libcamera0
+        url: http://archive.raspberrypi.org/debian/dists/bullseye/main/binary-armhf/Packages
+
+    - name: "Lookup libcamera version in bookworm"
+      id: libcamera_version_bookworm
+      uses: OctoPrint/actions/latest-apt-version@main
+      with:
+        package: libcamera0.5
+        url: http://archive.raspberrypi.org/debian/dists/bookworm/main/binary-armhf/Packages
+
+    - name: "Lookup libcamera version in trixie"
+      id: libcamera_version_trixie
+      uses: OctoPrint/actions/latest-apt-version@main
+      with:
+        package: libcamera0.5
+        url: http://archive.raspberrypi.org/debian/dists/trixie/main/binary-armhf/Packages
+
+    - name: "Create new result"
+      id: new_result
+      run: |
+        touch last_bullseye.txt
+        echo "libcamera: ${{ steps.libcamera_version_bullseye.outputs.version }}" > new_bullseye.txt
+        same_bullseye=$(diff last_bullseye.txt new_bullseye.txt > /dev/null && echo "same" || echo "different")
+
+        touch last_bookworm.txt
+        echo "libcamera: ${{ steps.libcamera_version_bookworm.outputs.version }}" > new_bookworm.txt
+        same_bookworm=$(diff last_bookworm.txt new_bookworm.txt > /dev/null && echo "same" || echo "different")
+
+        touch last_trixie.txt
+        echo "libcamera: ${{ steps.libcamera_version_trixie.outputs.version }}" > new_trixie.txt
+        same_trixie=$(diff last_trixie.txt new_trixie.txt > /dev/null && echo "same" || echo "different")
+
+        echo "same=${same_bullseye}${same_bookworm}${same_trixie}" >> "$GITHUB_OUTPUT"
+
+        echo "Bullseye"
+        cp new_bullseye.txt last_bullseye.txt
+        cat last_bullseye.txt
+        cat new_bullseye.txt
+
+        echo "Bookworm"
+        cp new_bookworm.txt last_bookworm.txt
+        cat last_bookworm.txt
+        cat new_bookworm.txt
+
+        echo "Trixie"
+        cp new_trixie.txt last_trixie.txt
+        cat last_trixie.txt
+        cat new_trixie.txt
+
+  release:
+    needs: check
+    if: needs.check.outputs.same != 'samesamesame'
+    uses: ./.github/workflows/build_release.yaml
+    permissions:
+      contents: write
