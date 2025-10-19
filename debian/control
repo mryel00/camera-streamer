@@ -29,8 +29,7 @@ Replaces: camera-streamer
 Build-Profiles: <raspi>
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: camera-streamer with CSI and USB camera,
-  RTSP, WebRTC, and H264 support
+Description: camera-streamer with CSI and USB camera, and H264 WebRTC support
 
 Package: mainsail-camera-streamer-generic
 Provides: camera-streamer
