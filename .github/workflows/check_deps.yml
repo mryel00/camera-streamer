@@ -21,6 +21,15 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-check-deps-
 
+    - name: "Restore last result"
+      uses: actions/cache/restore@v4
+      with:
+        path: last*.txt
+        # Forces a fallback to restore-keys every time because run_id is unique
+        key: ${{ runner.os }}-check-deps-${{ github.run_id }}
+        restore-keys: |
+            ${{ runner.os }}-check-deps-
+
     - name: "Lookup libcamera version in bullseye"
       id: libcamera_version_bullseye
       uses: OctoPrint/actions/latest-apt-version@main
@@ -62,17 +71,20 @@ jobs:
         echo "Bullseye"
         cat last_bullseye.txt
         cat new_bullseye.txt
-        cp new_bullseye.txt last_bullseye.txt
 
         echo "Bookworm"
         cat last_bookworm.txt
         cat new_bookworm.txt
-        cp new_bookworm.txt last_bookworm.txt
 
         echo "Trixie"
         cat last_trixie.txt
         cat new_trixie.txt
-        cp new_trixie.txt last_trixie.txt
+
+    - name: Upload new versions
+      uses: actions/upload-artifact@v4
+      with:
+        name: version-state
+        path: new_*.txt
 
   release:
     needs: check
@@ -80,6 +92,28 @@ jobs:
     uses: ./.github/workflows/build_release.yaml
     permissions:
       contents: write
+
+  update-cache:
+    name: "Update Cache"
+    runs-on: ubuntu-latest
+    needs: release
+    steps:
+      - name: Download new versions
+        uses: actions/download-artifact@v4
+        with:
+          name: version-state
+
+      - name: Prepare files for cache
+        run: |
+          mv new_bullseye.txt last_bullseye.txt
+          mv new_bookworm.txt last_bookworm.txt
+          mv new_trixie.txt last_trixie.txt
+
+      - name: Save new result
+        uses: actions/cache/save@v4
+        with:
+          path: last*.txt
+          key: ${{ runner.os }}-check-deps-${{ github.run_id }}
 
   notify:
     name: "Notify via Issue"
