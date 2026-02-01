@@ -80,3 +80,19 @@ jobs:
     uses: ./.github/workflows/build_release.yaml
     permissions:
       contents: write
+
+  notify:
+    name: "Notify via Issue"
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Create Success Issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo ${{ github.repository }} \
+            --title "New Release Created: Dependency Update" \
+            --body "A new version of libcamera was found and a release has been built successfully. View the run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} @${{ github.repository_owner }}"
