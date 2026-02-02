@@ -71,16 +71,15 @@ jobs:
       run: docker create --name deb_make deb_make
     - name: Copy files
       run: 'docker cp deb_make:/deb/. deb/'
-    - name: 'Release debian files'
-      uses: ncipollo/release-action@v1
+    - name: Sanitize Arch Name
+      run: |
+        SAFE_ARCH=$(echo "${{ matrix.arch.docker }}" | tr '/' '-')
+        echo "SAFE_ARCH=$SAFE_ARCH" >> $GITHUB_ENV
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v6
       with:
-        tag: "v${{ env.GIT_VERSION }}"
-        artifacts: "deb/*.deb"
-        allowUpdates: true
-        omitBodyDuringUpdate: true
-        omitNameDuringUpdate: true
-        updateOnlyUnreleased: true
-        draft: true
+        name: deb-${{ matrix.debian_version }}-${{ env.SAFE_ARCH }}-${{ matrix.build_type }}
+        path: deb/*.deb
 
   publish:
     runs-on: ubuntu-latest
@@ -122,10 +121,17 @@ jobs:
         git log --pretty="- %s (%h)" "$lastReleasedVer..HEAD" >> RELEASE.tmp
         echo "" >> RELEASE.tmp
         cat RELEASE.md >> RELEASE.tmp
+    - name: Download all artifacts
+      uses: actions/download-artifact@v7
+      with:
+        pattern: deb-*
+        path: ./all-debs
+        merge-multiple: true
     - name: 'Release debian files'
       uses: ncipollo/release-action@v1
       with:
         tag: "v${{ env.GIT_VERSION }}"
+        artifacts: "all-debs/*.deb"
         allowUpdates: true
         updateOnlyUnreleased: true
         generateReleaseNotes: true
