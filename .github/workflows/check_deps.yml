@@ -39,7 +39,7 @@ jobs:
       id: libcamera_version_trixie
       uses: OctoPrint/actions/latest-apt-version@main
       with:
-        package: libcamera0.6
+        package: libcamera0.7
         url: http://archive.raspberrypi.org/debian/dists/trixie/main/binary-armhf/Packages
 
     - name: "Create new result"
