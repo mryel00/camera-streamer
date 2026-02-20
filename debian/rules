@@ -47,8 +47,8 @@ override_dh_strip:
 override_dh_shlibdeps:
 	dh_shlibdeps
 
-	# Make libcamera0 to be exact
-	sed -i "s/libcamera0 (>=[^)]*)/libcamera0 (= $$(dpkg -s libcamera0 | grep Version | cut -d" " -f2))/g" debian/mainsail-camera-streamer*.substvars
+	# # Make libcamera0 to be exact
+	# sed -i "s/libcamera0 (>=[^)]*)/libcamera0 (= $$(dpkg -s libcamera0 | grep Version | cut -d" " -f2))/g" debian/mainsail-camera-streamer*.substvars
 
 .PHONY: override_dh_install
 override_dh_install:
