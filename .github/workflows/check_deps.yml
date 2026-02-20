@@ -1,4 +1,3 @@
-# Copied and adjusted from https://github.com/OctoPrint/camera-streamer/
 name: "Check libcamera dependency update"
 
 on:
@@ -11,75 +10,98 @@ jobs:
     name: "Check"
     runs-on: ubuntu-latest
     outputs:
-      same: ${{ steps.new_result.outputs.same }}
+      changed: ${{ steps.compare.outputs.changed }}
     steps:
-    - name: "Restore last result"
+    - name: Restore last known state
       uses: actions/cache/restore@v4
       with:
-        path: last*.txt
+        path: last_state.json
         key: ${{ runner.os }}-check-deps-${{ github.run_id }}
         restore-keys: |
-            ${{ runner.os }}-check-deps-
+          ${{ runner.os }}-check-deps-
 
-    - name: "Lookup libcamera version in bullseye"
-      id: libcamera_version_bullseye
-      uses: OctoPrint/actions/latest-apt-version@main
-      with:
-        package: libcamera0
-        url: http://archive.raspberrypi.org/debian/dists/bullseye/main/binary-armhf/Packages
-
-    - name: "Lookup libcamera version in bookworm"
-      id: libcamera_version_bookworm
-      uses: OctoPrint/actions/latest-apt-version@main
-      with:
-        package: libcamera0.5
-        url: http://archive.raspberrypi.org/debian/dists/bookworm/main/binary-armhf/Packages
-
-    - name: "Lookup libcamera version in trixie"
-      id: libcamera_version_trixie
-      uses: OctoPrint/actions/latest-apt-version@main
-      with:
-        package: libcamera0.7
-        url: http://archive.raspberrypi.org/debian/dists/trixie/main/binary-armhf/Packages
-
-    - name: "Create new result"
-      id: new_result
+    - name: Discover and check all libcamera packages
+      id: discover
       run: |
-        touch last_bullseye.txt
-        echo "libcamera: ${{ steps.libcamera_version_bullseye.outputs.version }}" > new_bullseye.txt
-        same_bullseye=$(diff last_bullseye.txt new_bullseye.txt > /dev/null && echo "same" || echo "different")
+        set -euo pipefail
 
-        touch last_bookworm.txt
-        echo "libcamera: ${{ steps.libcamera_version_bookworm.outputs.version }}" > new_bookworm.txt
-        same_bookworm=$(diff last_bookworm.txt new_bookworm.txt > /dev/null && echo "same" || echo "different")
+        # Define distros and their Packages URLs (only distros you actually build for)
+        declare -A DISTROS=(
+          ["bookworm"]="http://archive.raspberrypi.org/debian/dists/bookworm/main/binary-armhf/Packages"
+          ["trixie"]="http://archive.raspberrypi.org/debian/dists/trixie/main/binary-armhf/Packages"
+        )
 
-        touch last_trixie.txt
-        echo "libcamera: ${{ steps.libcamera_version_trixie.outputs.version }}" > new_trixie.txt
-        same_trixie=$(diff last_trixie.txt new_trixie.txt > /dev/null && echo "same" || echo "different")
+        echo "{}" > new_state.json
 
-        echo "same=${same_bullseye}${same_bookworm}${same_trixie}" >> "$GITHUB_OUTPUT"
+        for distro in "${!DISTROS[@]}"; do
+          url="${DISTROS[$distro]}"
+          echo "=== Checking $distro ==="
 
-        echo "Bullseye"
-        cat last_bullseye.txt
-        cat new_bullseye.txt
+          # Download the Packages file and extract only the runtime libcamera packages
+          curl -sfL "$url" | awk '
+            /^Package: / && $2 ~ /^libcamera0(\.[0-9]+)*$/ { pkg=$2 }
+            /^Version: / && pkg { print pkg "=" $2; pkg="" }
+          ' | sort > "${distro}_packages.txt"
 
-        echo "Bookworm"
-        cat last_bookworm.txt
-        cat new_bookworm.txt
+          echo "Found packages in $distro:"
+          cat "${distro}_packages.txt"
 
-        echo "Trixie"
-        cat last_trixie.txt
-        cat new_trixie.txt
+          # Store as JSON for structured comparison
+          jq -Rn --arg distro "$distro" '
+            [inputs | split("=") | {(.[0]): .[1]}] | add // {}
+            | {($distro): .}
+          ' "${distro}_packages.txt" > "${distro}_state.json"
 
-    - name: Upload new versions
+          # Merge into new_state.json
+          jq -s '.[0] * .[1]' new_state.json "${distro}_state.json" > tmp.json
+          mv tmp.json new_state.json
+        done
+
+        echo "New state:"
+        cat new_state.json
+
+    - name: Compare with last known state
+      id: compare
+      run: |
+        set -euo pipefail
+
+        # Initialize last_state.json if it doesn't exist
+        if [ ! -f last_state.json ]; then
+          echo "{}" > last_state.json
+        fi
+
+        echo "Last state:"
+        cat last_state.json
+        echo ""
+        echo "New state:"
+        cat new_state.json
+
+        # Compute diff
+        if diff <(jq -S . last_state.json) <(jq -S . new_state.json) > /dev/null 2>&1; then
+          echo "changed=false" >> "$GITHUB_OUTPUT"
+          echo "summary=No changes detected." >> "$GITHUB_OUTPUT"
+        else
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+          # Build a human-readable summary of what changed
+          summary=$(diff <(jq -S . last_state.json) <(jq -S . new_state.json) || true)
+          # Escape for GH output (multiline)
+          {
+            echo "summary<<EOF"
+            echo "$summary"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Upload new state as artifact
       uses: actions/upload-artifact@v4
       with:
-        name: version-state
-        path: new_*.txt
+        name: dep-state
+        path: new_state.json
 
   release:
     needs: check
-    if: needs.check.outputs.same != 'samesamesame'
+    if: needs.check.outputs.changed == 'true'
     uses: ./.github/workflows/build_release.yaml
     permissions:
       contents: write
@@ -89,21 +111,18 @@ jobs:
     runs-on: ubuntu-latest
     needs: release
     steps:
-      - name: Download new versions
+      - name: Download new state
         uses: actions/download-artifact@v4
         with:
-          name: version-state
+          name: dep-state
 
-      - name: Prepare files for cache
-        run: |
-          mv new_bullseye.txt last_bullseye.txt
-          mv new_bookworm.txt last_bookworm.txt
-          mv new_trixie.txt last_trixie.txt
+      - name: Rename for cache
+        run: mv new_state.json last_state.json
 
       - name: Save new result
         uses: actions/cache/save@v4
         with:
-          path: last*.txt
+          path: last_state.json
           key: ${{ runner.os }}-check-deps-${{ github.run_id }}
 
   notify:
