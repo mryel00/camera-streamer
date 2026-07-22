@@ -13,7 +13,7 @@ jobs:
       changed: ${{ steps.compare.outputs.changed }}
     steps:
     - name: Restore last known state
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v6
       with:
         path: last_state.json
         key: ${{ runner.os }}-check-deps-${{ github.run_id }}
@@ -94,7 +94,7 @@ jobs:
         fi
 
     - name: Upload new state as artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: dep-state
         path: new_state.json
@@ -112,7 +112,7 @@ jobs:
     needs: release
     steps:
       - name: Download new state
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: dep-state
 
@@ -120,7 +120,7 @@ jobs:
         run: mv new_state.json last_state.json
 
       - name: Save new result
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: last_state.json
           key: ${{ runner.os }}-check-deps-${{ github.run_id }}

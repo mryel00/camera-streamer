@@ -24,7 +24,7 @@ jobs:
             build_type: raspi
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v7
       with:
         fetch-depth: 0
         submodules: recursive
@@ -50,7 +50,7 @@ jobs:
         echo "MajorVer=$majorVer LastVer=$lastVer NextVer=$nextVer"
         echo "GIT_VERSION=${nextVer//v/}" >> $GITHUB_ENV
     - name: Set up QEMU
-      uses: docker/setup-qemu-action@v2
+      uses: docker/setup-qemu-action@v4
     - name: Build Dockerfile
       run: |
         docker build \
@@ -76,7 +76,7 @@ jobs:
         SAFE_ARCH=$(echo "${{ matrix.arch.docker }}" | tr '/' '-')
         echo "SAFE_ARCH=$SAFE_ARCH" >> $GITHUB_ENV
     - name: Upload Artifact
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: deb-${{ matrix.debian_version }}-${{ env.SAFE_ARCH }}-${{ matrix.build_type }}
         path: deb/*.deb
@@ -88,7 +88,7 @@ jobs:
     needs: [build]
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v7
       with:
         fetch-depth: 0
         submodules: recursive
@@ -122,7 +122,7 @@ jobs:
         echo "" >> RELEASE.tmp
         cat RELEASE.md >> RELEASE.tmp
     - name: Download all artifacts
-      uses: actions/download-artifact@v7
+      uses: actions/download-artifact@v8
       with:
         pattern: deb-*
         path: ./all-debs
