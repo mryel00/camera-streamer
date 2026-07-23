@@ -11,15 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.compare.outputs.changed }}
+      new_state: ${{ steps.discover.outputs.new_state }}
     steps:
-    - name: Restore last known state
-      uses: actions/cache/restore@v6
-      with:
-        path: last_state.json
-        key: ${{ runner.os }}-check-deps-${{ github.run_id }}
-        restore-keys: |
-          ${{ runner.os }}-check-deps-
-
     - name: Discover and check all libcamera packages
       id: discover
       run: |
@@ -58,23 +51,28 @@ jobs:
         done
 
         echo "New state:"
-        cat new_state.json
+        jq -S . new_state.json
+
+        echo "new_state=$(jq -cS . new_state.json)" >> "$GITHUB_OUTPUT"
 
     - name: Compare with last known state
       id: compare
+      env:
+        LAST_STATE: ${{ vars.LAST_DEP_STATE }}
       run: |
         set -euo pipefail
 
-        # Initialize last_state.json if it doesn't exist
-        if [ ! -f last_state.json ]; then
-          echo "{}" > last_state.json
+        if [ -z "${LAST_STATE:-}" ]; then
+          echo "Warning: repository variable LAST_DEP_STATE is unset or empty."
+          LAST_STATE='{}'
         fi
+        printf '%s' "$LAST_STATE" > last_state.json
 
         echo "Last state:"
-        cat last_state.json
+        jq -S . last_state.json
         echo ""
         echo "New state:"
-        cat new_state.json
+        jq -S . new_state.json
 
         # Compute diff
         if diff <(jq -S . last_state.json) <(jq -S . new_state.json) > /dev/null 2>&1; then
@@ -93,12 +91,6 @@ jobs:
           } >> "$GITHUB_OUTPUT"
         fi
 
-    - name: Upload new state as artifact
-      uses: actions/upload-artifact@v7
-      with:
-        name: dep-state
-        path: new_state.json
-
   release:
     needs: check
     if: needs.check.outputs.changed == 'true'
@@ -106,24 +98,19 @@ jobs:
     permissions:
       contents: write
 
-  update-cache:
-    name: "Update Cache"
+  update-state:
+    name: "Update State Variable"
     runs-on: ubuntu-latest
-    needs: release
+    needs: [check, release]
     steps:
-      - name: Download new state
-        uses: actions/download-artifact@v8
-        with:
-          name: dep-state
-
-      - name: Rename for cache
-        run: mv new_state.json last_state.json
-
-      - name: Save new result
-        uses: actions/cache/save@v6
-        with:
-          path: last_state.json
-          key: ${{ runner.os }}-check-deps-${{ github.run_id }}
+      - name: Store new state in repository variable
+        env:
+          GH_TOKEN: ${{ secrets.GH_VARS_TOKEN }}
+          NEW_STATE: ${{ needs.check.outputs.new_state }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$NEW_STATE" | gh variable set LAST_DEP_STATE --repo "${{ github.repository }}"
+          echo "Stored state: $NEW_STATE"
 
   notify:
     name: "Notify via Issue"
